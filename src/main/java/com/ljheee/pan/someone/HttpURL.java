@@ -11,17 +11,30 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URL;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class HttpURL {
     private String info = "";
     private String urlString = "";
     private String cookie = "";
-    private String ip="";
+    private String ip = "";
     URL url = null;
 
-    Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("218.241.219.226", 9999));
+    Proxy proxys[] = {
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("124.207.82.166", 8008)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("112.91.218.21", 9000)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("202.204.121.126", 80)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("218.241.219.226", 9999)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("61.128.208.94", 3182)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("106.14.162.110", 8080)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("221.6.201.18", 9999)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("222.132.145.122", 53281)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("121.69.37.6", 9797))
+    };
 
-    public HttpURL() {}
+    public HttpURL() {
+    }
+
     public HttpURL(String str) {
         urlString = str;
         // 定义info为网址init后的参数
@@ -35,7 +48,7 @@ public class HttpURL {
      */
     public boolean execute(String password) {
         try {
-            ip=getIP();
+            ip = getIP();
             HttpGet();
             return tryPWD(password);
         } catch (IOException e) {
@@ -83,7 +96,7 @@ public class HttpURL {
         // 新建url连接
         url = new URL(urlString);
         // 打开链接
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxy);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxys[ThreadLocalRandom.current().nextInt(proxys.length)]);
         // 设置参数
         connection.setRequestMethod("GET");
         connection.setRequestProperty("ContentType", "text/html;charset=UTF-8");
@@ -118,7 +131,7 @@ public class HttpURL {
                         + System.currentTimeMillis()
                         + "&bdstoken=null&channel=chunlei&clienttype=0&web=1&app_id=033646&logid=MTUwMTEyNDM2OTY5MzAuOTE5NTU5NjQwMTk0NDM0OA==");
         // 打开链接
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxy);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxys[ThreadLocalRandom.current().nextInt(proxys.length)]);
         // 设置参数
         connection.setDoOutput(true); // Triggers POST.
         connection.setRequestMethod("POST");
