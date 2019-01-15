@@ -1,15 +1,10 @@
 package com.ljheee.pan.someone;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URL;
+import com.ljheee.pan.ReTryException;
+import com.ljheee.pan.util.NetUtil;
+
+import java.io.*;
+import java.net.*;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -75,9 +70,15 @@ public class HttpURL {
      * @throws UnsupportedEncodingException
      * @throws IOException
      */
-    public boolean tryPWD(String pwd) throws UnsupportedEncodingException,
+    public boolean tryPWD(String pwd) throws
             IOException {
-        String data = HttpPost("pwd=" + pwd + "&vcode=&vcode_str=");
+        String data = null;
+        try {
+            data = HttpPost("pwd=" + pwd + "&vcode=&vcode_str=");
+        } catch (ReTryException e) {
+            tryPWD(pwd);
+        }
+
         if (data.contains("\"errno\":-9"))
             return false;
         else if (data.contains("\"errno\":0"))
@@ -93,10 +94,16 @@ public class HttpURL {
      * @throws IOException
      */
     public void HttpGet() throws IOException {
+
+        Proxy proxy;
+        do {
+            proxy = proxys[ThreadLocalRandom.current().nextInt(proxys.length)];
+        } while (!NetUtil.checkProxy(proxy));
+
         // 新建url连接
         url = new URL(urlString);
         // 打开链接
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxys[ThreadLocalRandom.current().nextInt(proxys.length)]);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxy);
         // 设置参数
         connection.setRequestMethod("GET");
         connection.setRequestProperty("ContentType", "text/html;charset=UTF-8");
@@ -105,23 +112,27 @@ public class HttpURL {
         connection.setRequestProperty("Referer",
                 "http://pan.baidu.com/share/link?" + info);
         connection.setRequestProperty("Cookie", "");
-        InputStream response = connection.getInputStream();
+//        InputStream response = connection.getInputStream();
+        try {
+            connection.connect();
+        } catch (SocketException e) {
+        }
         cookie = connection.getHeaderField("Set-Cookie");
+//        System.out.println(cookie);
 //        writeContent(response);
         connection.disconnect();
-        response.close();
+//        response.close();
     }
 
     /**
      * 使用密码进行POST请求
      *
-     * @param url
      * @param param
      * @return
      * @throws IOException
      * @throws UnsupportedEncodingException
      */
-    public String HttpPost(String param) throws UnsupportedEncodingException,
+    public String HttpPost(String param) throws ReTryException,
             IOException {
         // 新建url连接
         url = new URL(
@@ -130,8 +141,12 @@ public class HttpURL {
                         + "&t="
                         + System.currentTimeMillis()
                         + "&bdstoken=null&channel=chunlei&clienttype=0&web=1&app_id=033646&logid=MTUwMTEyNDM2OTY5MzAuOTE5NTU5NjQwMTk0NDM0OA==");
+        Proxy proxy;
+        do {
+            proxy = proxys[ThreadLocalRandom.current().nextInt(proxys.length)];
+        } while (!NetUtil.checkProxy(proxy));
         // 打开链接
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxys[ThreadLocalRandom.current().nextInt(proxys.length)]);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxy);
         // 设置参数
         connection.setDoOutput(true); // Triggers POST.
         connection.setRequestMethod("POST");
@@ -144,14 +159,24 @@ public class HttpURL {
         connection.setRequestProperty("Host", "pan.baidu.com");
         connection.setRequestProperty("Ip", ip);
         connection.setRequestProperty("Cookie", cookie);
+        connection.setConnectTimeout(9000);
+        connection.setReadTimeout(9000);
         OutputStream output = connection.getOutputStream();
         try {
             output.write(param.getBytes("UTF-8"));
         } finally {
             output.close();
         }
-        InputStream response = connection.getInputStream();
-        String html = writeContent(response);
+        InputStream response = null;
+        String html = null;
+        try {
+            response = connection.getInputStream();
+            html = writeContent(response);
+        } catch (FileNotFoundException e) {
+            throw new ReTryException("");
+        } catch (IOException e) {
+            throw new ReTryException("");
+        }
         response.close();
         connection.disconnect();
         return html;
